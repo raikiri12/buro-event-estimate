@@ -58,7 +58,9 @@ function loadRecords() {
   }
 }
 function announce(message) {
-  const target = $(dialog.open ? "dialog-status" : "status");
+  const inDialog = dialog.open;
+  const target = $(inDialog ? "dialog-status" : "status");
+  $(inDialog ? "status" : "dialog-status").textContent = "";
   target.textContent = message;
   clearTimeout(statusTimeout);
   statusTimeout = setTimeout(() => target.textContent = "", 5000);
