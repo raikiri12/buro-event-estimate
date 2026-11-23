@@ -116,7 +116,7 @@ function applyForm(form) {
 function canReplaceDraft() {
   return originalForm === JSON.stringify(readForm()) || window.confirm("Открыть другую смету? Несохранённые изменения будут потеряны.");
 }
-function startEdit(record, extend) {
+function startEdit(record) {
   if (!canReplaceDraft()) return;
   const place = venues.find(item => item.name === record.name);
   if (!place) {
@@ -133,7 +133,7 @@ function startEdit(record, extend) {
     food:food?.[0] || "none", foodRate:foodLine ? foodLine.value / record.guests : 0,
     services:record.lines.map(line => line.name)
   });
-  openCalculator(extend ? "hours" : "event-name");
+  openCalculator("event-name");
 }
 function estimate() {
   const place = venue();
@@ -266,10 +266,9 @@ function renderLedger() {
       (entry.title ? entry.name + " · " : "") + dateLabel(entry.date) + " · " + entry.hours + " ч · " + guestLabel(entry.guests)));
     const actions = node("div", undefined, "record-actions");
     actions.append(
-      button("Редактировать", "secondary", () => startEdit(entry, false)),
-      button("Продлить", "secondary", () => startEdit(entry, true)),
+      button("Редактировать", "secondary", () => startEdit(entry)),
       button("Открыть смету", "secondary", () => openProposal(entry)),
-      button("Передать в учёт", "secondary", () => openAccounting(entry)),
+      button(accountingLabel(entry), "secondary", () => openAccounting(entry)),
       button("Удалить", "secondary danger", () => confirmDelete(entry))
     );
     row.append(info, node("strong", rub(entry.total)), actions);
@@ -293,7 +292,13 @@ function saveEstimate() {
     announce("Смету изменили или удалили в другой вкладке. Откройте актуальную версию из списка");
     return;
   }
-  const entry = {...estimate(), form:readForm(), id:editing?.id ?? (globalThis.crypto?.randomUUID?.() || String(Date.now()))};
+  const form = readForm();
+  const entry = {
+    ...estimate(),
+    form,
+    accountingChanged: Boolean(editing && (editing.accountingChanged || JSON.stringify(form) !== originalForm)),
+    id:editing?.id ?? (globalThis.crypto?.randomUUID?.() || String(Date.now()))
+  };
   const next = editing ? records.map(record => record.id === entry.id ? entry : record) : [entry, ...records];
   if (!persist(next)) return;
   editing = entry;
@@ -317,6 +322,9 @@ function confirmDelete(entry) {
   }), button("Отмена", "secondary", () => dialog.close()));
   openDialog("Удалить смету?", node("p", (entry.title || "Лофт " + entry.name) + " · " + rub(entry.total)), actions);
   actions.lastElementChild.focus();
+}
+function accountingLabel(entry) {
+  return entry.accountingChanged ? "Передать изменения в учёт" : "Передать в учёт";
 }
 function openAccounting(entry) {
   const headers = ["Мероприятие","Дата","Площадка","Часы","Гости","Итого, ₽"];
@@ -345,7 +353,10 @@ function openAccounting(entry) {
       }
     }));
   }
-  openDialog("Передать в учёт", node("p", "Скопируйте строку и вставьте её в учётную таблицу"), preview, actions);
+  const instruction = entry.accountingChanged
+    ? "Скопируйте обновлённую строку и замените ей запись этой сметы в учётной таблице"
+    : "Скопируйте строку и вставьте её в учётную таблицу";
+  openDialog(accountingLabel(entry), node("p", instruction), preview, actions);
 }
 function exportLedger() {
   const csvRow = row => row.map(cell => '"' + String(cell).replaceAll('"', '""') + '"').join(";");
@@ -362,20 +373,6 @@ function exportLedger() {
   link.click();
   link.remove();
   setTimeout(() => URL.revokeObjectURL(url), 10000);
-}
-function showScenario() {
-  const entry = estimate();
-  const rate = number("extra");
-  const extras = entry.lines.filter(line => !line.name.startsWith("Аренда · ") && line.name !== "Продление аренды").reduce((sum,line) => sum + line.value, 0);
-  const grid = node("div", undefined, "compare");
-  for (const hours of [4,6]) {
-    const col = node("div");
-    col.append(node("span", hours + " ч аренды"), node("strong", rub(rate * hours + extras)), node("small", "Аренда " + rub(rate * hours)));
-    grid.append(col);
-  }
-  openDialog("Продление с 4 до 6 часов",
-    node("p", "Учебный пример с условной ставкой " + rub(rate) + "/ч. По опубликованным условиям аренда начинается от 5 часов."),
-    grid, node("p", "Фуршет и услуги остаются на сумму " + rub(extras) + ". Разница в смете — " + rub(rate * 2) + "."));
 }
 
 venues.forEach((place,i) => {
@@ -420,7 +417,6 @@ document.querySelectorAll("[data-step]").forEach(control => {
     refresh();
   });
 });
-$("scenario").addEventListener("click", () => { if (valid(true)) showScenario(); });
 $("preview").addEventListener("click", () => { if (valid(true)) openProposal(estimate()); });
 $("save").addEventListener("click", saveEstimate);
 const defaultForm = readForm();
