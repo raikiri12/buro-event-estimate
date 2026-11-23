@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#f6f5f2">
+<title>Смета мероприятия · БЮРО хороших событий</title>
+<link rel="stylesheet" href="style.css">
+<script src="app.js" defer></script>
+</head>
+<body>
+<header><div class="bar">
+  <a class="brand" href="#estimate"><span class="mark" aria-hidden="true"><i></i><i></i><i></i><i></i></span><span><b>БЮРО</b><small>хороших событий</small></span></a>
+  <nav aria-label="Разделы"><a href="#estimate" id="nav-estimate">Калькулятор</a><a href="#ledger" id="nav-ledger">Сметы <span id="count">0</span></a></nav>
+  <button type="button" class="primary" id="new-estimate">Новая смета</button>
+</div></header>
+<main>
+<section id="estimate">
+  <div class="hero">
+    <div class="intro"><p class="kicker">Рабочее место администратора</p><h1>Смета<br>мероприятия</h1><p>Соберите аренду, фуршет и услуги в предложение для клиента</p></div>
+    <figure><img id="venue-photo" src="assets/surf.webp" alt="Интерьер лофта «Сёрф»" fetchpriority="high"><figcaption id="venue-caption">Сёрф · Бауманская</figcaption></figure>
+  </div>
+  <div class="workspace">
+    <div class="form-body">
+      <section class="panel" aria-labelledby="parameters">
+        <h2 id="parameters">Параметры события</h2>
+        <p class="edit-context" id="edit-context" hidden>Редактирование сохранённой сметы</p>
+        <label for="event-name">Название мероприятия</label><input id="event-name" maxlength="100" placeholder="Например, день рождения">
+        <label for="venue">Площадка</label><select id="venue"></select><p class="hint" id="venue-info"></p>
+        <div class="fields"><div><label for="date">Дата</label><input type="date" id="date"></div><div><label for="guests">Гости</label><div class="step"><button type="button" data-step="guests:-1" aria-label="Уменьшить число гостей">−</button><input id="guests" aria-label="Гости" inputmode="numeric" type="number" min="1" max="200" value="24"><button type="button" data-step="guests:1" aria-label="Увеличить число гостей">+</button></div></div></div>
+        <p id="capacity" class="hint warning" role="status" hidden></p>
+        <div class="fields rental"><div><label for="hours">Длительность, ч</label><div class="step"><button type="button" data-step="hours:-1" aria-label="Уменьшить длительность">−</button><input id="hours" aria-label="Длительность в часах" inputmode="numeric" type="number" min="5" max="24" value="5"><button type="button" data-step="hours:1" aria-label="Увеличить длительность">+</button></div></div><div><label for="extra">Продление, ₽/ч</label><input id="extra" type="number" inputmode="numeric" min="0" max="999999" aria-describedby="extra-note"></div></div>
+        <p class="hint" id="extra-note">Минимум 5 часов. Ставка продления в демо рассчитывается из цены пакета и может быть изменена</p>
+        <button type="button" class="scenario" id="scenario"><span aria-hidden="true">4 → 6 ч</span><span>Показать пример продления</span></button>
+      </section>
+      <section class="panel" aria-labelledby="menu">
+        <h2 id="menu">Кейтеринг и услуги</h2>
+        <div class="fields"><div><label for="food">Формат питания</label><select id="food"><option value="buffet">Фуршет</option><option value="banquet">Банкет</option><option value="station">Фудстанции</option><option value="none">Без кейтеринга</option></select></div><div><label for="food-price">Ставка, ₽/гость</label><input type="number" inputmode="numeric" min="0" max="999999" id="food-price"></div></div>
+        <div id="services" class="services"></div>
+      </section>
+    </div>
+    <aside class="receipt" aria-labelledby="receipt-title" id="receipt">
+      <div class="receipt-head"><h2 id="receipt-title">Итог сметы</h2><p id="summary"></p></div>
+      <dl id="items"></dl>
+      <div class="total"><span>Всего</span><strong id="total" aria-live="polite"></strong></div>
+      <p class="extension" id="extension" role="status" hidden></p>
+      <p class="receipt-note" id="receipt-note">Расчёт по стартовым ценам. Тариф на дату и возвратный залог уточняются отдельно.</p>
+      <div class="receipt-actions"><button class="primary" type="button" id="save">Сохранить смету</button><button class="secondary" type="button" id="preview">Открыть предложение</button><button class="secondary" type="button" id="cancel-edit" hidden>Отменить изменения</button></div>
+    </aside>
+  </div>
+</section>
+<section id="ledger" hidden>
+  <div class="ledger-head"><div><h1>Сметы</h1><p>Сохранённые расчёты хранятся в этом браузере</p></div><button type="button" id="export" class="secondary">Выгрузить CSV</button></div>
+  <div class="panel" id="records"></div>
+</section>
+</main>
+<div class="mobile-total" id="mobile-total" hidden><button type="button" id="jump-to-total"><span id="mobile-label">К итогу сметы</span><strong id="mobile-amount"></strong></button></div>
+<footer><span>Демо для БЮРО хороших событий</span><div><a href="https://letspartyloft.ru/prices" target="_blank" rel="noopener">Цены и условия аренды ↗</a><a href="https://letspartyloft.ru/catering" target="_blank" rel="noopener">Кейтеринг ↗</a></div></footer>
+<dialog id="dialog" aria-labelledby="dialog-title">
+  <div class="dialog-head"><h2 id="dialog-title"></h2><form method="dialog"><button type="submit" class="close" aria-label="Закрыть">×</button></form></div>
+  <div id="dialog-content"></div>
+  <p class="hint" id="dialog-status" role="status"></p>
+</dialog>
+<p id="status" role="status"></p>
+</body>
+</html>
