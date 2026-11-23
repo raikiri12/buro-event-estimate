@@ -212,12 +212,61 @@ function refresh() {
   }
   $("mobile-label").textContent = extraText ? "За продление " + extraText : "К итогу сметы";
 }
-function refreshPhoto() {
+const venuePhotos = new Map();
+let photoSelection = 0;
+
+function photoSource(place) {
+  return "assets/" + place.photo + ".webp?v=2";
+}
+function loadVenuePhoto(place, priority) {
+  const existing = venuePhotos.get(place.photo);
+  if (existing) {
+    if (priority === "high") existing.image.fetchPriority = priority;
+    return existing;
+  }
+  const image = new Image();
+  image.fetchPriority = priority;
+  image.alt = "Интерьер лофта «" + place.name + "»";
+  image.src = photoSource(place);
+  const ready = image.decode().then(() => image, () => {
+    venuePhotos.delete(place.photo);
+    return null;
+  });
+  const request = {image, ready};
+  venuePhotos.set(place.photo, request);
+  return request;
+}
+async function refreshPhoto() {
   const place = venue();
-  const photo = $("venue-photo");
-  photo.src = "assets/" + place.photo + ".webp";
-  photo.alt = "Интерьер лофта «" + place.name + "»";
-  $("venue-caption").textContent = place.name + " · " + place.metro;
+  const selection = ++photoSelection;
+  const current = $("venue-photo");
+  const figure = current.parentElement;
+  const caption = $("venue-caption");
+  if (current.getAttribute("src") === photoSource(place) && (!current.hidden || current.naturalWidth)) {
+    current.hidden = false;
+    caption.textContent = place.name + " · " + place.metro;
+    figure.removeAttribute("aria-busy");
+    return;
+  }
+  figure.setAttribute("aria-busy", "true");
+  const image = await loadVenuePhoto(place, "high").ready;
+  if (selection !== photoSelection) return;
+  figure.removeAttribute("aria-busy");
+  if (!image) {
+    current.hidden = true;
+    caption.textContent = "Фото недоступно · " + place.name;
+    return;
+  }
+  image.id = current.id;
+  image.hidden = false;
+  current.replaceWith(image);
+  caption.textContent = place.name + " · " + place.metro;
+}
+function preloadVenuePhotos() {
+  const visiblePhoto = $("venue-photo").getAttribute("src");
+  for (const place of venues) {
+    if (photoSource(place) !== visiblePhoto) loadVenuePhoto(place, "low");
+  }
 }
 function openDialog(title, ...body) {
   $("dialog-status").textContent = "";
@@ -449,3 +498,5 @@ window.addEventListener("storage", event => {
 applyForm(defaultForm);
 renderLedger();
 route();
+if (document.readyState === "complete") preloadVenuePhotos();
+else window.addEventListener("load", preloadVenuePhotos, {once:true});
